@@ -3,14 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <title>현장 사진 OCR</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     * { box-sizing: border-box; }
     body { font-family: sans-serif; max-width: 860px; margin: 40px auto; padding: 0 20px; color: #222; }
     h1 { font-size: 20px; margin-bottom: 24px; }
-    .card { border: 1px solid #e0e0e0; border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; }
-    .label { font-size: 12px; color: #888; margin-bottom: 6px; }
-    input[type=text], input[type=password] { width: 100%; padding: 9px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; }
     .upload-area { border: 2px dashed #ccc; border-radius: 10px; padding: 28px; text-align: center; cursor: pointer; margin-bottom: 16px; }
     .upload-area:hover { border-color: #555; }
     .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -26,25 +22,22 @@
     td { padding: 8px 10px; border-bottom: 1px solid #eee; }
     .gongjong { font-weight: 500; color: #1a6bcc; }
     .file-count { font-size: 13px; color: #888; margin-bottom: 12px; }
-    .tip { font-size: 12px; color: #aaa; margin-top: 6px; }
+    .mode-btn { padding: 9px 20px; border: 1px solid #ccc; border-radius: 8px; background: white; cursor: pointer; font-size: 14px; }
+    .mode-btn.active { background: #1a6bcc; color: white; border-color: #1a6bcc; }
   </style>
 </head>
 <body>
   <h1>현장 사진 OCR — 공종별 분류</h1>
 
-  <div class="card">
-    <div class="label">Anthropic API 키</div>
-    <input type="password" id="apiKey" placeholder="sk-ant-...">
-    <p class="tip">키는 브라우저에서만 사용되며 서버로 전송되지 않습니다.</p>
+  <div style="display:flex; gap:8px; margin-bottom:12px;">
+    <button class="mode-btn active" id="modeFile" onclick="setMode('file')">개별 사진 선택</button>
+    <button class="mode-btn" id="modeFolder" onclick="setMode('folder')">폴더 선택</button>
   </div>
 
-  <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+  <div class="upload-area" id="uploadArea" onclick="triggerInput()">
     <input type="file" id="fileInput" accept="image/*" multiple style="display:none">
     <input type="file" id="folderInput" webkitdirectory accept="image/*" style="display:none">
-    <p style="margin:0 0 10px">클릭하거나 사진을 드래그해서 업로드</p>
-    <button onclick="event.stopPropagation(); document.getElementById('folderInput').click()">
-      폴더 통째로 선택
-    </button>
+    <p style="margin:0" id="uploadHint">클릭하거나 사진을 드래그해서 업로드</p>
   </div>
 
   <div class="file-count" id="fileCount"></div>
@@ -72,11 +65,29 @@
 <script>
 let selectedFiles = [];
 let resultData    = [];
-const API_URL = 'https://hojimrigap-ocr-server.hf.space';
+let currentMode   = 'file';
+const API_URL     = 'https://hojimrigap-ocr-server.hf.space';
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('modeFile').classList.toggle('active', mode === 'file');
+  document.getElementById('modeFolder').classList.toggle('active', mode === 'folder');
+  document.getElementById('uploadHint').textContent =
+    mode === 'file' ? '클릭하거나 사진을 드래그해서 업로드' : '클릭해서 폴더 선택';
+  resetAll();
+}
+
+function triggerInput() {
+  if (currentMode === 'file') {
+    document.getElementById('fileInput').click();
+  } else {
+    document.getElementById('folderInput').click();
+  }
+}
 
 function collectFiles(input) {
   const files = Array.from(input.files).filter(f => f.type.startsWith('image/'));
-  selectedFiles = [...selectedFiles, ...files];
+  selectedFiles = files;
   document.getElementById('fileCount').textContent = `선택된 사진: ${selectedFiles.length}장`;
   document.getElementById('runBtn').disabled = selectedFiles.length === 0;
   document.getElementById('csvBtn').disabled = true;
